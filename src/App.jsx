@@ -2,16 +2,17 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
 } from "react-router-dom";
+import Dashboard from "./assets/pages/dashboard/Dashboard";
 
 function App() {
   return (
-       <Router>
+    <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
-      </Router>
-  )}
+    </Router>
+  );
+}
 
 export default App;
