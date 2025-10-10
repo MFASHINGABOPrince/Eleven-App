@@ -8,18 +8,14 @@ import {
   Logs,
   Menu, 
   Users, 
-  LayoutGrid ,
-  SquareCheckBig,
-  Flag,
-  Tag, 
-  Layers,
+ ShipWheel ,
+ Blocks ,
   Settings, 
   Search,
   ChevronDown,
   ChevronRight,
   User,
-  AlignLeft,
-  X 
+ LogOut 
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 
@@ -76,17 +72,12 @@ const SideBar= () => {
   // Get active item from current URL
   const getActiveItemFromPath = () => {
     const path = location.pathname;
-    if (path === '/accountant-dashboard') return 'Dashboard';
-    if (path === '/accountant-journal-entries') return 'Journal Entries';
-    if (path === '/accountant-accounts') return 'Accounts';
-    if (path === '/accountant-invoices') return 'Invoices';
-    if (path === '/accountant-requisitions') return 'Requisitions';
-    if (path === '/accountant-management/contacts') return 'Contacts';
-    if (path === '/accountant-management/employees') return 'Employees';
-    if (path === '/accountant-payroll') return 'Payroll';
-    if (path === '/accountant-status-types') return 'Status Types';
-    if (path === '/accountant-reports') return 'Reports';
-    if (path === '/accountant-settings') return 'Settings';
+    if (path === '/dashboard') return 'Dashboard';
+    if (path === '/matches') return 'Match';
+    if (path === '/league') return 'League';
+    if (path === '/players') return 'Players';
+    
+
     return 'Dashboard'; // default
   };
 
@@ -97,51 +88,21 @@ const SideBar= () => {
       name: 'Dashboard', 
       icon: ChartNoAxesColumn, 
       active: true,
-      path: '/accountant-dashboard'
+      path: '/dashboard'
     },
     { 
-      name: 'Journal Entries', 
-      icon: Layers,
-      path: '/accountant-journal-entries'
+      name: 'Match', 
+      icon: Blocks ,
+      path: '/matches'
     },
     { 
-      name: 'Accounts', 
-      icon: Logs,
-      path: '/accountant-accounts'
-    },
-    { 
-      name: 'Invoices', 
-      icon: LayoutGrid,
-      path: '/accountant-invoices'
-    },
-    { 
-      name: 'Requisitions', 
-      icon: AlignLeft,
-      path: '/accountant-requisitions'
-    },
-    { 
-      name: 'Management', 
-      icon: Users, 
-      hasSubmenu: true,
-      submenu: [
-        { name: 'Contacts', path: '/accountant-management/contacts' },
-        { name: 'Employees', path: '/accountant-management/employees' }
-      ]
-    },
-    { 
-      name: 'Payroll', 
-      icon: SquareCheckBig,
-      path: '/accountant-payroll'
-    },
-    { 
-      name: 'Status Types', 
-      icon: Tag,
-      path: '/accountant-status-types'
-    },
-    { 
-      name: 'Reports', 
-      icon: Flag,
-      path: '/accountant-reports'
+      name: 'League', 
+      icon: ShipWheel,
+      path: '/league'
+    },{ 
+      name: 'Player', 
+      icon: Users,
+      path: '/players'
     }
   ];
 
@@ -274,10 +235,10 @@ const SideBar= () => {
             <User className="w-4 h-4 text-gray-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">Olivia Rhye</p>
-            <p className="text-xs text-gray-500 truncate">olivia@ohereza.com</p>
+            <p className="text-sm font-medium text-gray-900 truncate">Admin</p>
+            <p className="text-xs text-gray-500 truncate">admin@gmail.com</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
+          <LogOut  className="w-4 h-4 text-gray-400" />
         </Link>
       </div>
     </div>
