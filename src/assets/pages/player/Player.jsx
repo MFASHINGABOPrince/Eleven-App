@@ -1,14 +1,16 @@
-import React from "react";
+import React,{useState} from "react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { ArrowUp, Users, CalendarFold, Plus, Edit, Eye,Download ,FolderInput } from "lucide-react";
+import { ArrowUp, Users, CalendarFold, Plus, Edit, Eye,Download ,FolderInput,ChartNoAxesColumnIncreasing } from "lucide-react";
 import SideBar from "../side-bar/SideBar";
+import PlayerModal from "./PlayerModal";
 
 const Player = () => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
   // Sample data for players
   const players = [
     {
@@ -64,17 +66,17 @@ const Player = () => {
         <div className="flex-1 px-6 bg-[#F2F3F3] pb-10">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-[30px] font-normal text-[#101828]">
-                Match Management
+              <h2 className="text-[30px] font-medium text-[#101828]">
+                Player Management
               </h2>
               <p className="text-[#667085] text-[16px] font-normal mb-[20px]">
-                Manage all league matches, results, and scheduling
+                Manage all league players, statistics, and information
               </p>
             </div>
             <div>
-              <button className="bg-[#288f5f] text-white px-4 py-2 rounded-lg hover:bg-[#1f6f4c] transition">
+              <button onClick={() => setIsModalOpen(true)} className="bg-[#288f5f] text-white px-4 py-2 rounded-lg hover:bg-[#1f6f4c] transition">
                 <Plus className="inline-block mr-2" />
-                Match
+                Player
               </button>
             </div>
           </div>
@@ -116,7 +118,7 @@ const Player = () => {
                   </div>
                   <div className="bg-blue-100 text-[#004cff] rounded-full p-2 hover:bg-blue-200 transition">
                     <div className="bg-blue-200 rounded-full p-1 hover:bg-blue-300 transition">
-                      <CalendarFold className="w-4 h-4" />
+                      <ChartNoAxesColumnIncreasing className="w-4 h-4" />
                     </div>
                   </div>
                 </div>
@@ -157,8 +159,8 @@ const Player = () => {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto ">
+                <table className="w-full ">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -253,6 +255,11 @@ const Player = () => {
           </Card>
         </div>
       </div>
+        <PlayerModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        // onAdd={handleAccountAdd}
+      />
     </div>
   );
 };
