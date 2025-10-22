@@ -9,6 +9,7 @@ import Match from "./assets/pages/match/Match";
 import League from "./assets/pages/league/League";
 import Player from "./assets/pages/player/Player";
 import Login from "./assets/pages/login/Login";
+import Setting from "./assets/pages/setting/Setting";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/matches" element={<Match />} />
         <Route path="/league" element={<League />} />
         <Route path="/players" element={<Player />} />
+        <Route path="/settings" element={<Setting />} />
       </Routes>
     </Router>
   );

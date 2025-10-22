@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-// import { logout, reset } from '../../../features/auth/authSlice';
-// import { useDispatch } from "react-redux";
+import { logout, reset } from '../../feature/auth/authSlice';
+import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 // import { toast } from "react-toastify";
 import { 
@@ -24,10 +24,10 @@ const SideBar= () => {
   const [isManagementOpen, setIsManagementOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-//   const dispatch = useDispatch();
-//   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-//   const { user } = useSelector((state) => state.reducer.auth);
+  const { user } = useSelector((state) => state.reducer.auth);
 //   const name= user?.payload?.user?.firstName;
 //   const email= user?.payload?.user?.email;
 
@@ -65,7 +65,7 @@ const SideBar= () => {
       dispatch(logout());
       dispatch(reset());
       toast.success("Logged out successfully!");
-      navigate("/");
+      navigate("/login");
     }
   };
 
@@ -212,7 +212,7 @@ const SideBar= () => {
       {/* Settings */}
       <div className="p-4 border-t border-gray-100">
         <Link
-          to="/accountant-settings"
+          to="/settings"
           className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left transition-colors duration-200 ${
             activeItem === 'Settings' 
               ? 'bg-purple-50 text-purple-500' 
