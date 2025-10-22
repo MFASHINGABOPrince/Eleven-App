@@ -1,4 +1,4 @@
-import React from "react";
+import React,{useState} from "react";
 import SideBar from "../side-bar/SideBar";
 import {
   Card,
@@ -22,8 +22,8 @@ import {
   Trash2,
 } from "lucide-react";
 
+
 const Match = () => {
-  // Sample data for matches
   const matches = [
     {
       id: 1,
@@ -84,7 +84,7 @@ const Match = () => {
               </p>
             </div>
             <div>
-              <button className="bg-[#288f5f] text-white px-4 py-2 rounded-lg hover:bg-[#1f6f4c] transition">
+              <button onClick={() => setIsModalOpen(true)} className="bg-[#288f5f] text-white px-4 py-2 rounded-lg hover:bg-[#1f6f4c] transition">
                 <Plus className="inline-block mr-2" />
                 Match
               </button>
@@ -234,7 +234,13 @@ const Match = () => {
             </CardContent>
           </Card>
         </div>
+       
       </div>
+        {/* <AddMatch
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        // onAdd={handleAccountAdd}
+      /> */}
     </div>
   );
 };

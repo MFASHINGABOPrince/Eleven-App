@@ -1,5 +1,5 @@
 import axios from "axios";
-import authServices from "@/features/auth/authServices";
+import authServices from "../feature/auth/authServices";
 
 const api = axios.create({
   baseURL: "http://localhost:2020/api/v1",
