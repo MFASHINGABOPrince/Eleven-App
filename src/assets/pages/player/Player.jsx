@@ -1,61 +1,172 @@
-import React,{useState} from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { ArrowUp, Users, CalendarFold, Plus, Edit, Eye,Download ,FolderInput,ChartNoAxesColumnIncreasing } from "lucide-react";
+import {
+  ArrowUp,
+  Users,
+  Plus,
+  Edit,
+  Eye,
+  Download,
+  FolderInput,
+  ChartNoAxesColumnIncreasing,
+  Loader2,
+} from "lucide-react";
 import SideBar from "../side-bar/SideBar";
 import PlayerModal from "./PlayerModal";
 
 const Player = () => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-  // Sample data for players
-  const players = [
-    {
-      id: 1,
-      rank: "#1",
-      name: "Bertin",
-      title: "Player #1",
-      avatar: "B",
-      points: 7,
-      matches: 10,
-      winPercent: "%",
-      gamesPlayed: 30,
-      gamesWon: 16,
-      gamesLost: 14,
-      goalDifference: 2,
-    },
-    {
-      id: 2,
-      rank: "#2",
-      name: "Norbert",
-      title: "Player #2",
-      avatar: "N",
-      points: 6,
-      matches: 8,
-      winPercent: "%",
-      gamesPlayed: 24,
-      gamesWon: 17,
-      gamesLost: 7,
-      goalDifference: 10,
-    },
-    {
-      id: 3,
-      rank: "#3",
-      name: "Hussein",
-      title: "Player #3",
-      avatar: "H",
-      points: 6,
-      matches: 9,
-      winPercent: "%",
-      gamesPlayed: 27,
-      gamesWon: 18,
-      gamesLost: 9,
-      goalDifference: 9,
-    },
-  ];
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [stats, setStats] = useState({
+    totalPlayers: 0,
+    activePlayers: 0,
+    newThisMonth: 0,
+    newThisWeek: 0,
+  });
+
+  // API base URL
+  const API_URL = "http://localhost:2020/api/v1/players";
+
+  // Fetch players from API
+  const fetchPlayers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.get(API_URL, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // Add token if needed
+        },
+      });
+
+      const playersData = response.data;
+      
+      // Sort players by points (descending)
+      const sortedPlayers = playersData.sort((a, b) => b.points - a.points);
+      
+      // Add rank to each player
+      const playersWithRank = sortedPlayers.map((player, index) => ({
+        ...player,
+        rank: `#${index + 1}`,
+        winPercent: calculateWinPercentage(player),
+        gamesPlayed: player.goalsScored + player.goalsConceded, // You can adjust this
+        goalDifference: player.goalsScored - player.goalsConceded,
+      }));
+
+      setPlayers(playersWithRank);
+      
+      // Calculate stats
+      calculateStats(playersWithRank);
+      
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching players:", err);
+      setError("Failed to load players. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  // Calculate win percentage
+  const calculateWinPercentage = (player) => {
+    const totalMatches = player.points; // Assuming each win = 1 point
+    if (totalMatches === 0) return "0%";
+    // This is an estimation - you might need to adjust based on your data
+    const winRate = (player.points / (player.points + 5)) * 100; // Simplified
+    return `${Math.round(winRate)}%`;
+  };
+
+  // Calculate statistics
+  const calculateStats = (playersData) => {
+    const total = playersData.length;
+    const active = playersData.filter((p) => p.points > 0).length;
+    
+    setStats({
+      totalPlayers: total,
+      activePlayers: active,
+      newThisMonth: Math.floor(total * 0.13), // Example calculation
+      newThisWeek: Math.floor(total * 0.8), // Example calculation
+    });
+  };
+
+  // Load players on component mount
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
+
+  // Handle player add/update
+  const handlePlayerUpdate = () => {
+    fetchPlayers(); // Refresh the list
+  };
+
+  // Export players to CSV
+  const handleExport = () => {
+    const csv = [
+      ["Rank", "Name", "Phone", "Points", "Goals Scored", "Goals Conceded", "Goal Difference"],
+      ...players.map((p) => [
+        p.rank,
+        p.name,
+        p.phone,
+        p.points,
+        p.goalsScored,
+        p.goalsConceded,
+        p.goalDifference,
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "players.csv";
+    a.click();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex">
+        <div className="fixed top-0 left-0 w-64 h-screen z-50">
+          <SideBar />
+        </div>
+        <div className="ml-64 flex-1 h-screen flex items-center justify-center bg-[#F2F3F3]">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-[#288f5f] mx-auto mb-4" />
+            <p className="text-gray-600">Loading players...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex">
+        <div className="fixed top-0 left-0 w-64 h-screen z-50">
+          <SideBar />
+        </div>
+        <div className="ml-64 flex-1 h-screen flex items-center justify-center bg-[#F2F3F3]">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={fetchPlayers}
+              className="bg-[#288f5f] text-white px-6 py-2 rounded-lg hover:bg-[#1f6f4c]"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex">
@@ -74,7 +185,10 @@ const Player = () => {
               </p>
             </div>
             <div>
-              <button onClick={() => setIsModalOpen(true)} className="bg-[#288f5f] text-white px-4 py-2 rounded-lg hover:bg-[#1f6f4c] transition">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-[#288f5f] text-white px-4 py-2 rounded-lg hover:bg-[#1f6f4c] transition"
+              >
                 <Plus className="inline-block mr-2" />
                 Player
               </button>
@@ -96,13 +210,13 @@ const Player = () => {
                 </div>
 
                 <div className="mt-2 text-[36px] font-semibold text-[#101828] tracking-tight">
-                  15
+                  {stats.totalPlayers}
                 </div>
 
                 <div className="flex items-center gap-2">
                   <ArrowUp className="text-green-500 w-4 h-4" />
                   <span className="text-green-600 font-semibold text-sm">
-                    +2
+                    +{stats.newThisMonth}
                   </span>
                   <span className="font-medium text-[14px] text-green-600">
                     this month
@@ -110,6 +224,7 @@ const Player = () => {
                 </div>
               </CardContent>
             </Card>
+
             <Card className="rounded-2xl shadow-sm border border-gray-200">
               <CardContent className="flex flex-col justify-between p-6 relative">
                 <div className="flex justify-between items-center">
@@ -124,12 +239,12 @@ const Player = () => {
                 </div>
 
                 <div className="mt-2 text-[36px] font-semibold text-[#101828] tracking-tight">
-                  20
+                  {stats.activePlayers}
                 </div>
 
                 <div className="flex items-center gap-2">
                   <span className="text-blue-600 font-semibold text-sm">
-                    +12
+                    +{stats.newThisWeek}
                   </span>
                   <span className="font-medium text-[14px] text-blue-600">
                     this week
@@ -144,23 +259,26 @@ const Player = () => {
             <CardHeader className="border-b border-gray-200 bg-white">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-[24px] font-medium text-[#101828]">
-                  All Players
+                  All Players ({players.length})
                 </CardTitle>
                 <div className="flex gap-3">
                   <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
                     <FolderInput className="w-4 h-4" />
                     Import
                   </button>
-                  <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+                  <button
+                    onClick={handleExport}
+                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+                  >
                     <Download className="w-4 h-4" />
                     Export
-                </button>
+                  </button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto ">
-                <table className="w-full ">
+              <div className="overflow-x-auto">
+                <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -170,22 +288,19 @@ const Player = () => {
                         Player
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Points
+                        Phone
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Matches
+                        Points
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Win %
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Games Played
+                        Goals Scored
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Games Won
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Games Lost
+                        Goals Conceded
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Goal Difference
@@ -196,58 +311,80 @@ const Player = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {players.map((player) => (
-                      <tr
-                        key={player.id}
-                        className="hover:bg-gray-50 transition"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                          {player.rank}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold">
-                              {player.avatar}
-                            </div>
-                            <div>
-                              <div className="text-sm font-semibold text-gray-900">
-                                {player.name}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {player.title}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                          {player.points}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {player.matches}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {player.winPercent}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {player.gamesPlayed}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {player.gamesWon}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {player.gamesLost}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                          {player.goalDifference}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Eye className="text-[#667085] " />
-                            <Edit className="text-[#667085]" />
-                          </div>
+                    {players.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
+                          No players found. Add your first player!
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      players.map((player) => (
+                        <tr
+                          key={player.id}
+                          className="hover:bg-gray-50 transition"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            {player.rank}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white font-semibold">
+                                {player.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {player.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Player {player.rank}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {player.phone}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {player.points} pts
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {player.winPercent}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {player.goalsScored}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {player.goalsConceded}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <span
+                              className={
+                                player.goalDifference > 0
+                                  ? "text-green-600"
+                                  : player.goalDifference < 0
+                                  ? "text-red-600"
+                                  : "text-gray-600"
+                              }
+                            >
+                              {player.goalDifference > 0 ? "+" : ""}
+                              {player.goalDifference}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <button className="text-[#667085] hover:text-blue-600 transition">
+                                <Eye className="w-5 h-5" />
+                              </button>
+                              <button className="text-[#667085] hover:text-green-600 transition">
+                                <Edit className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -255,10 +392,11 @@ const Player = () => {
           </Card>
         </div>
       </div>
-        <PlayerModal
+
+      <PlayerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        // onAdd={handleAccountAdd}
+        onAdd={handlePlayerUpdate}
       />
     </div>
   );
