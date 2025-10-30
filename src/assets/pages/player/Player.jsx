@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import {
   Card,
   CardContent,
@@ -16,12 +18,17 @@ import {
   FolderInput,
   ChartNoAxesColumnIncreasing,
   Loader2,
+  X,
 } from "lucide-react";
 import SideBar from "../side-bar/SideBar";
 import PlayerModal from "./PlayerModal";
 
 const Player = () => {
+  const { user } = useSelector((state) => state.reducer.auth);
+  const token = user?.payload?.tokens?.accessToken;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,40 +39,40 @@ const Player = () => {
     newThisWeek: 0,
   });
 
-  // API base URL
+  // Import state
+  const [importFile, setImportFile] = useState(null);
+  const [importFileType, setImportFileType] = useState("csv");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
   const API_URL = "http://localhost:2020/api/v1/players";
 
-  // Fetch players from API
+  const getAuthHeaders = () => ({
+    Authorization: `Bearer ${token}`,
+  });
+
   const fetchPlayers = async () => {
     try {
       setLoading(true);
       setError(null);
       
       const response = await axios.get(API_URL, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // Add token if needed
-        },
+        headers: getAuthHeaders(),
       });
 
       const playersData = response.data;
-      
-      // Sort players by points (descending)
       const sortedPlayers = playersData.sort((a, b) => b.points - a.points);
       
-      // Add rank to each player
       const playersWithRank = sortedPlayers.map((player, index) => ({
         ...player,
         rank: `#${index + 1}`,
         winPercent: calculateWinPercentage(player),
-        gamesPlayed: player.goalsScored + player.goalsConceded, // You can adjust this
+        gamesPlayed: player.goalsScored + player.goalsConceded,
         goalDifference: player.goalsScored - player.goalsConceded,
       }));
 
       setPlayers(playersWithRank);
-      
-      // Calculate stats
       calculateStats(playersWithRank);
-      
       setLoading(false);
     } catch (err) {
       console.error("Error fetching players:", err);
@@ -74,16 +81,13 @@ const Player = () => {
     }
   };
 
-  // Calculate win percentage
   const calculateWinPercentage = (player) => {
-    const totalMatches = player.points; // Assuming each win = 1 point
+    const totalMatches = player.points;
     if (totalMatches === 0) return "0%";
-    // This is an estimation - you might need to adjust based on your data
-    const winRate = (player.points / (player.points + 5)) * 100; // Simplified
+    const winRate = (player.points / (player.points + 5)) * 100;
     return `${Math.round(winRate)}%`;
   };
 
-  // Calculate statistics
   const calculateStats = (playersData) => {
     const total = playersData.length;
     const active = playersData.filter((p) => p.points > 0).length;
@@ -91,44 +95,123 @@ const Player = () => {
     setStats({
       totalPlayers: total,
       activePlayers: active,
-      newThisMonth: Math.floor(total * 0.13), // Example calculation
-      newThisWeek: Math.floor(total * 0.8), // Example calculation
+      newThisMonth: Math.floor(total * 0.13),
+      newThisWeek: Math.floor(total * 0.8),
     });
   };
 
-  // Load players on component mount
   useEffect(() => {
     fetchPlayers();
   }, []);
 
-  // Handle player add/update
   const handlePlayerUpdate = () => {
-    fetchPlayers(); // Refresh the list
+    fetchPlayers();
   };
 
-  // Export players to CSV
-  const handleExport = () => {
-    const csv = [
-      ["Rank", "Name", "Phone", "Points", "Goals Scored", "Goals Conceded", "Goal Difference"],
-      ...players.map((p) => [
-        p.rank,
-        p.name,
-        p.phone,
-        p.points,
-        p.goalsScored,
-        p.goalsConceded,
-        p.goalDifference,
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
+  const handleExport = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/export/csv`, {
+        headers: getAuthHeaders(),
+        responseType: "blob",
+      });
 
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "players.csv";
-    a.click();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "players.csv");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success("Players exported successfully!");
+    } catch (error) {
+      toast.error("Failed to export players");
+    }
+  };
+
+  // ==================== IMPORT FUNCTIONS ====================
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      const extension = selectedFile.name.split(".").pop().toLowerCase();
+      
+      if (extension === "csv") {
+        setImportFileType("csv");
+        setImportFile(selectedFile);
+      } else if (extension === "xlsx") {
+        setImportFileType("excel");
+        setImportFile(selectedFile);
+      } else {
+        toast.error("Only CSV and Excel (.xlsx) files are supported");
+        e.target.value = "";
+      }
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.warning("Please select a file first");
+      return;
+    }
+
+    try {
+      setImporting(true);
+      const formData = new FormData();
+      formData.append("file", importFile);
+
+      const endpoint = importFileType === "csv" 
+        ? `${API_URL}/import/csv`
+        : `${API_URL}/import/excel`;
+
+      const response = await axios.post(endpoint, formData, {
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setImportResult(response.data);
+      
+      if (response.data.successCount > 0) {
+        toast.success(response.data.message);
+        fetchPlayers();
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      console.error("Import error:", error);
+      toast.error("Failed to import file");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/template/csv`, {
+        headers: getAuthHeaders(),
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "players_template.csv");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success("Template downloaded successfully");
+    } catch (error) {
+      toast.error("Failed to download template");
+    }
+  };
+
+  const closeImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportFile(null);
+    setImportResult(null);
   };
 
   if (loading) {
@@ -184,7 +267,14 @@ const Player = () => {
                 Manage all league players, statistics, and information
               </p>
             </div>
-            <div>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="border border-[#288f5f] text-[#288f5f] px-4 py-2 rounded-lg hover:bg-[#288f5f] hover:text-white transition"
+              >
+                <FolderInput className="inline-block mr-2 w-4 h-4" />
+                Import
+              </button>
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="bg-[#288f5f] text-white px-4 py-2 rounded-lg hover:bg-[#1f6f4c] transition"
@@ -262,7 +352,10 @@ const Player = () => {
                   All Players ({players.length})
                 </CardTitle>
                 <div className="flex gap-3">
-                  <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+                  <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+                  >
                     <FolderInput className="w-4 h-4" />
                     Import
                   </button>
@@ -393,11 +486,118 @@ const Player = () => {
         </div>
       </div>
 
+      {/* Player Modal */}
       <PlayerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={handlePlayerUpdate}
       />
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Import Players</h2>
+              <button
+                onClick={closeImportModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+              <h3 className="font-semibold text-blue-800 mb-2">📝 Instructions:</h3>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• Supported formats: CSV (.csv) and Excel (.xlsx)</li>
+                <li>• Required columns: Name, Phone</li>
+                <li>• First row should be header (Name,Phone)</li>
+                <li>• Download template below for reference</li>
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mb-6">
+              <button
+                onClick={handleDownloadTemplate}
+                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              >
+                📥 Download Template
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+              >
+                📤 Export Players
+              </button>
+            </div>
+
+            {/* File Upload */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">
+                Select File (CSV or Excel)
+              </label>
+              <input
+                type="file"
+                accept=".csv,.xlsx"
+                onChange={handleFileChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+              />
+              {importFile && (
+                <p className="text-sm text-gray-600 mt-2">
+                  Selected: {importFile.name} ({importFileType.toUpperCase()})
+                </p>
+              )}
+            </div>
+
+            {/* Upload Button */}
+            <button
+              onClick={handleImport}
+              disabled={!importFile || importing}
+              className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-300 font-semibold"
+            >
+              {importing ? "Importing..." : "Upload & Import"}
+            </button>
+
+            {/* Results */}
+            {importResult && (
+              <div className="mt-6 border-t pt-6">
+                <h3 className="font-semibold text-lg mb-4">Import Results</h3>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Success</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {importResult.successCount}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Failed</p>
+                    <p className="text-3xl font-bold text-red-600">
+                      {importResult.failureCount}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-700 mb-4">{importResult.message}</p>
+
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-60 overflow-y-auto">
+                    <h4 className="font-semibold text-red-800 mb-2">Errors:</h4>
+                    <ul className="text-sm text-red-700 space-y-1">
+                      {importResult.errors.map((error, index) => (
+                        <li key={index}>• {error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

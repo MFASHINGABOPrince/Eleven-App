@@ -99,7 +99,8 @@ const SideBar= () => {
       name: 'League', 
       icon: ShipWheel,
       path: '/league'
-    },{ 
+    },
+    { 
       name: 'Player', 
       icon: Users,
       path: '/players'

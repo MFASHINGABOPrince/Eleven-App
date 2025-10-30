@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 
-const MatchList = ({ matches, onReschedule, onRecordScore }) => {
+const MatchList = ({ 
+  matches, 
+  onReschedule, 
+  onRecordScore, 
+  onSetDeadline,
+  onRemoveDeadline,
+  onForfeit 
+}) => {
   const [scores, setScores] = useState({});
   const [editingMatch, setEditingMatch] = useState(null);
   const [reschedulingMatch, setReschedulingMatch] = useState(null);
@@ -47,7 +54,7 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
   const formatDate = (dateArray) => {
     if (Array.isArray(dateArray)) {
       const [year, month, day] = dateArray;
-      return `${day}/${month}/${year}`;
+      return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
     }
     return "Not set";
   };
@@ -60,12 +67,39 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
     return "";
   };
 
+  const getDaysUntilDeadline = (deadlineDate) => {
+    if (!Array.isArray(deadlineDate)) return null;
+    const [year, month, day] = deadlineDate;
+    const deadline = new Date(year, month - 1, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = deadline - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getDeadlineStatus = (match) => {
+    if (!match.deadlineDate) return null;
+    const days = getDaysUntilDeadline(match.deadlineDate);
+    
+    if (days < 0) {
+      return { text: "OVERDUE", color: "bg-red-100 text-red-800", badge: "🔴" };
+    } else if (days === 0) {
+      return { text: "DUE TODAY", color: "bg-orange-100 text-orange-800", badge: "⏰" };
+    } else if (days <= 3) {
+      return { text: `${days}d left`, color: "bg-yellow-100 text-yellow-800", badge: "⚠️" };
+    } else {
+      return { text: `${days}d left`, color: "bg-blue-100 text-blue-800", badge: "📅" };
+    }
+  };
+
   return (
     <div className="grid gap-4 mt-4">
       {matches.map((match) => {
         const isEditing = editingMatch === match.id;
         const isRescheduling = reschedulingMatch === match.id;
         const hasScore = match.scorePlayer1 > 0 || match.scorePlayer2 > 0;
+        const deadlineStatus = getDeadlineStatus(match);
 
         return (
           <div
@@ -76,14 +110,14 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1">
                 <h3 className="font-bold text-xl text-gray-800">
-                  {match.player1?.name} 
+                  {match.player1?.name}
                   <span className="mx-2 text-gray-400">vs</span>
                   {match.player2?.name}
                 </h3>
-                
+
                 {/* Date Display or Reschedule Input */}
                 {!isRescheduling ? (
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-3 mt-2">
                     <p className="text-sm text-gray-500">
                       📅 {formatDate(match.scheduledDate)}
                       {" • "}
@@ -113,7 +147,7 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
                       onClick={() => handleReschedule(match.id)}
                       className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
                     >
-                      ✓ Save
+                      ✓
                     </button>
                     <button
                       onClick={() => {
@@ -122,24 +156,49 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
                       }}
                       className="bg-gray-400 text-white px-3 py-1 rounded text-sm hover:bg-gray-500"
                     >
-                      ✕ Cancel
+                      ✕
                     </button>
+                  </div>
+                )}
+
+                {/* Deadline Display */}
+                {match.deadlineDate && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-gray-500">
+                      ⏰ Deadline: {formatDate(match.deadlineDate)}
+                    </p>
+                    {!hasScore && (
+                      <button
+                        onClick={() => onRemoveDeadline(match.id)}
+                        className="text-xs text-red-600 hover:text-red-800"
+                        title="Remove deadline"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Winner Badge */}
-              {match.winner && (
-                <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold">
-                  🏆 {match.winner.name}
-                </div>
-              )}
+              {/* Status Badges */}
+              <div className="flex flex-col items-end gap-2">
+                {match.winner && (
+                  <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                    🏆 {match.winner.name}
+                  </div>
+                )}
+                {deadlineStatus && !match.winner && (
+                  <div className={`${deadlineStatus.color} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1`}>
+                    <span>{deadlineStatus.badge}</span>
+                    {deadlineStatus.text}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Score Display or Input */}
             <div className="mt-4 pt-4 border-t border-gray-100">
               {!isEditing && hasScore ? (
-                // Erekana scores zihari
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-6">
                     <div className="text-center">
@@ -160,7 +219,6 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
                   </button>
                 </div>
               ) : (
-                // Input za scores
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <label className="block text-xs text-gray-600 mb-1">
@@ -174,7 +232,7 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
                       onChange={(e) =>
                         handleScoreChange(match.id, "score1", e.target.value)
                       }
-                      className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500"
                     />
                   </div>
 
@@ -192,14 +250,14 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
                       onChange={(e) =>
                         handleScoreChange(match.id, "score2", e.target.value)
                       }
-                      className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500"
                     />
                   </div>
 
                   <div className="flex gap-2 mt-5">
                     <button
                       onClick={() => handleSaveScore(match.id)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition font-medium"
+                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
                     >
                       💾 Save
                     </button>
@@ -209,7 +267,7 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
                           setEditingMatch(null);
                           setScores({ ...scores, [match.id]: {} });
                         }}
-                        className="bg-gray-400 text-white px-4 py-2 rounded-md hover:bg-gray-500 transition"
+                        className="bg-gray-400 text-white px-4 py-2 rounded-md hover:bg-gray-500"
                       >
                         Cancel
                       </button>
@@ -219,12 +277,30 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
               )}
             </div>
 
-            {/* Match Stats */}
+            {/* Action Buttons */}
+            {!match.winner && (
+              <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+                <button
+                  onClick={() => onSetDeadline(match)}
+                  className="flex-1 bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm font-medium"
+                >
+                  📅 {match.deadlineDate ? "Update" : "Set"} Deadline
+                </button>
+                <button
+                  onClick={() => onForfeit(match)}
+                  className="flex-1 bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 text-sm font-medium"
+                >
+                  ❌ Forfeit
+                </button>
+              </div>
+            )}
+
+            {/* Match Info */}
             {hasScore && !isEditing && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-600">🎯 Goals:</span>
+                    <span className="text-gray-600">🎯 Final Score:</span>
                     <span className="ml-2 font-semibold">
                       {match.scorePlayer1} - {match.scorePlayer2}
                     </span>
@@ -232,8 +308,8 @@ const MatchList = ({ matches, onReschedule, onRecordScore }) => {
                   <div>
                     <span className="text-gray-600">📊 Result:</span>
                     <span className="ml-2 font-semibold">
-                      {match.winner 
-                        ? `${match.winner.name} wins (+1 point)` 
+                      {match.winner
+                        ? `${match.winner.name} wins (+1 point)`
                         : "Draw"}
                     </span>
                   </div>
