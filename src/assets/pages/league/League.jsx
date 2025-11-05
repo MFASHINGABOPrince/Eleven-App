@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Eye, X, Calendar, Users } from "lucide-react";
+import { Plus, Eye, X, Calendar, Users, Trash2 } from "lucide-react";
 import LeagueModal from "./LeagueModal";
 import SideBar from "../side-bar/SideBar";
 
@@ -9,8 +9,16 @@ const League = () => {
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [leagueToDelete, setLeagueToDelete] = useState(null);
 
-  const token = "user?.payload?.tokens?.accessToken";
+  // Get the actual token from your auth context or localStorage
+  // Replace this with your actual token retrieval logic
+  const token = localStorage.getItem('accessToken'); // Example
+  // OR if using auth context:
+  // const { user } = useAuth();
+  // const token = user?.payload?.tokens?.accessToken;
 
   const fetchLeagues = async () => {
     setLoading(true);
@@ -48,6 +56,45 @@ const League = () => {
     setIsPreviewOpen(true);
   };
 
+  const handleDeleteClick = (league) => {
+    setLeagueToDelete(league);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!leagueToDelete) return;
+
+    setDeleteLoading(leagueToDelete.id);
+    try {
+      const res = await fetch(`http://localhost:2020/api/v1/leagues/${leagueToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (res.ok) {
+        // Remove from local state
+        setLeagues(leagues.filter(league => league.id !== leagueToDelete.id));
+        setShowDeleteConfirm(false);
+        setLeagueToDelete(null);
+        
+        // Show success message (you can add a toast notification here)
+        console.log('League deleted successfully');
+      } else {
+        const data = await res.json();
+        console.error(data?.message || 'Failed to delete league');
+        alert(data?.message || 'Failed to delete league');
+      }
+    } catch (error) {
+      console.error('Error deleting league:', error);
+      alert('Error deleting league. Please try again.');
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   const formatDate = (dateArray) => {
     if (Array.isArray(dateArray) && dateArray.length === 3) {
       const [year, month, day] = dateArray;
@@ -56,7 +103,6 @@ const League = () => {
     return dateArray;
   };
 
-  // Format date to readable format
   const formatDateReadable = (dateArray) => {
     if (Array.isArray(dateArray) && dateArray.length === 3) {
       const [year, month, day] = dateArray;
@@ -134,13 +180,23 @@ const League = () => {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-right">
-                          <button 
-                            onClick={() => handlePreview(league)}
-                            className="text-green-600 hover:text-green-800 transition p-2 hover:bg-green-50 rounded-lg"
-                            title="View Details"
-                          >
-                            <Eye size={18} />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => handlePreview(league)}
+                              className="text-green-600 hover:text-green-800 transition p-2 hover:bg-green-50 rounded-lg"
+                              title="View Details"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteClick(league)}
+                              disabled={deleteLoading === league.id}
+                              className="text-red-600 hover:text-red-800 transition p-2 hover:bg-red-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Delete League"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -152,12 +208,62 @@ const League = () => {
         </div>
       </div>
 
-      {/* Add League Modal Placeholder */}
+      {/* Add League Modal */}
       <LeagueModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        // onAdd={handleAccountAdd}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && leagueToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 p-3 rounded-full">
+                <Trash2 className="text-red-600" size={24} />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">
+                Delete League
+              </h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{leagueToDelete.name}</strong>? 
+              This action cannot be undone and will remove all associated data.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setLeagueToDelete(null);
+                }}
+                disabled={deleteLoading !== null}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading !== null}
+                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleteLoading !== null ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={18} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {isPreviewOpen && selectedLeague && (
