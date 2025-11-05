@@ -4,8 +4,6 @@ const MatchList = ({
   matches, 
   onReschedule, 
   onRecordScore, 
-  onSetDeadline,
-  onRemoveDeadline,
   onForfeit 
 }) => {
   const [scores, setScores] = useState({});
@@ -16,6 +14,19 @@ const MatchList = ({
   if (!matches.length) {
     return <p className="mt-6 text-gray-500">No matches found for this league.</p>;
   }
+  const sortedMatches = [...matches].sort((a, b) => {
+    const getRoundNumber = (roundStr) => {
+      const match = roundStr?.match(/\d+/);
+      return match ? parseInt(match[0]) : 0;
+    };
+    return getRoundNumber(a.round) - getRoundNumber(b.round);
+  });
+  const matchesByRound = sortedMatches.reduce((acc, match) => {
+    const round = match.round || "Unknown Round";
+    if (!acc[round]) acc[round] = [];
+    acc[round].push(match);
+    return acc;
+  }, {});
 
   const handleScoreChange = (matchId, field, value) => {
     setScores({
@@ -93,232 +104,243 @@ const MatchList = ({
     }
   };
 
-  return (
-    <div className="grid gap-4 mt-4">
-      {matches.map((match) => {
-        const isEditing = editingMatch === match.id;
-        const isRescheduling = reschedulingMatch === match.id;
-        const hasScore = match.scorePlayer1 > 0 || match.scorePlayer2 > 0;
-        const deadlineStatus = getDeadlineStatus(match);
+  const renderMatch = (match) => {
+    const isEditing = editingMatch === match.id;
+    const isRescheduling = reschedulingMatch === match.id;
+    const hasScore = match.scorePlayer1 > 0 || match.scorePlayer2 > 0;
+    const deadlineStatus = getDeadlineStatus(match);
 
-        return (
-          <div
-            key={match.id}
-            className="bg-white shadow-md p-5 rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
-          >
-            {/* Header */}
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex-1">
-                <h3 className="font-bold text-xl text-gray-800">
-                  {match.player1?.name}
-                  <span className="mx-2 text-gray-400">vs</span>
-                  {match.player2?.name}
-                </h3>
+    return (
+      <div
+        key={match.id}
+        className="bg-white shadow-md p-5 rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
+      >
+        {/* Header */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1">
+            <h3 className="font-bold text-xl text-gray-800">
+              {match.player1?.name}
+              <span className="mx-2 text-gray-400">vs</span>
+              {match.player2?.name}
+            </h3>
 
-                {/* Date Display or Reschedule Input */}
-                {!isRescheduling ? (
-                  <div className="flex items-center gap-3 mt-2">
-                    <p className="text-sm text-gray-500">
-                      📅 {formatDate(match.scheduledDate)}
-                      {" • "}
-                      <span className="font-medium">{match.round}</span>
-                    </p>
-                    {!hasScore && (
-                      <button
-                        onClick={() => {
-                          setReschedulingMatch(match.id);
-                          setNewDate(getDateForInput(match.scheduledDate));
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline"
-                      >
-                        Reschedule
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 mt-2">
-                    <input
-                      type="date"
-                      value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
-                      className="border border-blue-300 px-2 py-1 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={() => handleReschedule(match.id)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={() => {
-                        setReschedulingMatch(null);
-                        setNewDate("");
-                      }}
-                      className="bg-gray-400 text-white px-3 py-1 rounded text-sm hover:bg-gray-500"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-
-                {/* Deadline Display */}
-                {match.deadlineDate && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-gray-500">
-                      ⏰ Deadline: {formatDate(match.deadlineDate)}
-                    </p>
-                    {!hasScore && (
-                      <button
-                        onClick={() => onRemoveDeadline(match.id)}
-                        className="text-xs text-red-600 hover:text-red-800"
-                        title="Remove deadline"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Status Badges */}
-              <div className="flex flex-col items-end gap-2">
-                {match.winner && (
-                  <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                    🏆 {match.winner.name}
-                  </div>
-                )}
-                {deadlineStatus && !match.winner && (
-                  <div className={`${deadlineStatus.color} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1`}>
-                    <span>{deadlineStatus.badge}</span>
-                    {deadlineStatus.text}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Score Display or Input */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              {!isEditing && hasScore ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">{match.player1?.name}</p>
-                      <p className="text-3xl font-bold text-blue-600">{match.scorePlayer1}</p>
-                    </div>
-                    <span className="text-2xl text-gray-300">-</span>
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">{match.player2?.name}</p>
-                      <p className="text-3xl font-bold text-blue-600">{match.scorePlayer2}</p>
-                    </div>
-                  </div>
+            {/* Date Display or Reschedule Input */}
+            {!isRescheduling ? (
+              <div className="flex items-center gap-3 mt-2">
+                <p className="text-sm text-gray-500">
+                  📅 {formatDate(match.scheduledDate)}
+                </p>
+                {!hasScore && (
                   <button
-                    onClick={() => setEditingMatch(match.id)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
+                    onClick={() => {
+                      setReschedulingMatch(match.id);
+                      setNewDate(getDateForInput(match.scheduledDate));
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
                   >
-                    ✏️ Edit Score
+                    Reschedule
                   </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">
-                      {match.player1?.name}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={scores[match.id]?.score1 || ""}
-                      onChange={(e) =>
-                        handleScoreChange(match.id, "score1", e.target.value)
-                      }
-                      className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-
-                  <span className="text-2xl text-gray-400 mt-5">:</span>
-
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">
-                      {match.player2?.name}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={scores[match.id]?.score2 || ""}
-                      onChange={(e) =>
-                        handleScoreChange(match.id, "score2", e.target.value)
-                      }
-                      className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-
-                  <div className="flex gap-2 mt-5">
-                    <button
-                      onClick={() => handleSaveScore(match.id)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
-                    >
-                      💾 Save
-                    </button>
-                    {hasScore && (
-                      <button
-                        onClick={() => {
-                          setEditingMatch(null);
-                          setScores({ ...scores, [match.id]: {} });
-                        }}
-                        className="bg-gray-400 text-white px-4 py-2 rounded-md hover:bg-gray-500"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            {!match.winner && (
-              <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="border border-blue-300 px-2 py-1 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                />
                 <button
-                  onClick={() => onSetDeadline(match)}
-                  className="flex-1 bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm font-medium"
+                  onClick={() => handleReschedule(match.id)}
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
                 >
-                  📅 {match.deadlineDate ? "Update" : "Set"} Deadline
+                  ✓
                 </button>
                 <button
-                  onClick={() => onForfeit(match)}
-                  className="flex-1 bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 text-sm font-medium"
+                  onClick={() => {
+                    setReschedulingMatch(null);
+                    setNewDate("");
+                  }}
+                  className="bg-gray-400 text-white px-3 py-1 rounded text-sm hover:bg-gray-500"
                 >
-                  ❌ Forfeit
+                  ✕
                 </button>
               </div>
             )}
 
-            {/* Match Info */}
-            {hasScore && !isEditing && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">🎯 Final Score:</span>
-                    <span className="ml-2 font-semibold">
-                      {match.scorePlayer1} - {match.scorePlayer2}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">📊 Result:</span>
-                    <span className="ml-2 font-semibold">
-                      {match.winner
-                        ? `${match.winner.name} wins (+1 point)`
-                        : "Draw"}
-                    </span>
-                  </div>
-                </div>
+            {/* Deadline Display - READ ONLY (Auto-calculated) */}
+            {match.deadlineDate && (
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-gray-500">
+                  ⏰ Deadline: {formatDate(match.deadlineDate)}
+                </p>
+                <span 
+                  className="text-xs text-gray-400 italic"
+                  title="Deadline is automatically set to 7 days after the scheduled date"
+                >
+                  (auto: +7 days)
+                </span>
               </div>
             )}
           </div>
-        );
-      })}
+
+          {/* Status Badges */}
+          <div className="flex flex-col items-end gap-2">
+            {match.winner && (
+              <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                🏆 {match.winner.name}
+              </div>
+            )}
+            {deadlineStatus && !match.winner && (
+              <div className={`${deadlineStatus.color} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1`}>
+                <span>{deadlineStatus.badge}</span>
+                {deadlineStatus.text}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Score Display or Input */}
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          {!isEditing && hasScore ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">{match.player1?.name}</p>
+                  <p className="text-3xl font-bold text-blue-600">{match.scorePlayer1}</p>
+                </div>
+                <span className="text-2xl text-gray-300">-</span>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">{match.player2?.name}</p>
+                  <p className="text-3xl font-bold text-blue-600">{match.scorePlayer2}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingMatch(match.id)}
+                className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 transition"
+              >
+                Edit Score
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-600 mb-1">
+                  {match.player1?.name}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={scores[match.id]?.score1 || ""}
+                  onChange={(e) =>
+                    handleScoreChange(match.id, "score1", e.target.value)
+                  }
+                  className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <span className="text-2xl text-gray-400 mt-5">:</span>
+
+              <div className="flex-1">
+                <label className="block text-xs text-gray-600 mb-1">
+                  {match.player2?.name}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={scores[match.id]?.score2 || ""}
+                  onChange={(e) =>
+                    handleScoreChange(match.id, "score2", e.target.value)
+                  }
+                  className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div className="flex gap-2 mt-5">
+                <button
+                  onClick={() => handleSaveScore(match.id)}
+                  className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 font-medium"
+                >
+                  Save
+                </button>
+                {hasScore && (
+                  <button
+                    onClick={() => {
+                      setEditingMatch(null);
+                      setScores({ ...scores, [match.id]: {} });
+                    }}
+                    className="bg-gray-400 text-white px-4 py-2 rounded-md hover:bg-gray-500"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        {!match.winner && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <button
+              onClick={() => onForfeit(match)}
+              className="w-full border border-green-700 text-green-700 px-3 py-2 rounded-md hover:bg-green-700 hover:text-white text-sm font-medium"
+            >
+             Forfeit Match
+            </button>
+          </div>
+        )}
+
+        {/* Match Info */}
+        {hasScore && !isEditing && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">🎯 Final Score:</span>
+                <span className="ml-2 font-semibold">
+                  {match.scorePlayer1} - {match.scorePlayer2}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">📊 Result:</span>
+                <span className="ml-2 font-semibold">
+                  {match.winner
+                    ? `${match.winner.name} wins (+1 point)`
+                    : "Draw"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        {deadlineStatus && deadlineStatus.badge === "🔴" && !match.winner && (
+          <div className="mt-3 bg-red-50 border border-red-200 rounded-md p-3">
+            <p className="text-xs text-red-800">
+              ⚠️ <strong>This match is overdue!</strong> The deadline has passed. 
+              Please complete the match or it will be auto-forfeited.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6 mt-4">
+      {Object.entries(matchesByRound).map(([round, roundMatches]) => (
+        <div key={round} className="space-y-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-gray-800">{round}</h2>
+            <div className="flex-1 h-px bg-gray-300"></div>
+            <span className="text-sm text-gray-500">
+              {roundMatches.length} {roundMatches.length === 1 ? 'match' : 'matches'}
+            </span>
+          </div>
+          
+          <div className="grid gap-4">
+            {roundMatches.map(match => renderMatch(match))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
