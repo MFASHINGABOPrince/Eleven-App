@@ -78,8 +78,16 @@ const LeagueModal = ({ isOpen, onClose, onLeagueAdded }) => {
 
       if (res.ok) {
         toast.success("League created successfully!");
+        
+        // Clear form fields NEZA
+        setName("");
+        setStartDate("");
+        setEndDate("");
+        setSelectedPlayers([]);
+        setIsDropdownOpen(false);
+        
         onLeagueAdded();
-        handleCancel();
+        onClose();
       } else {
         toast.error(data?.message || "Failed to create league");
       }
@@ -93,6 +101,7 @@ const LeagueModal = ({ isOpen, onClose, onLeagueAdded }) => {
     setStartDate("");
     setEndDate("");
     setSelectedPlayers([]);
+    setIsDropdownOpen(false);
     onClose();
   };
 
@@ -102,7 +111,7 @@ const LeagueModal = ({ isOpen, onClose, onLeagueAdded }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 relative">
         <button
-          onClick={onClose}
+          onClick={handleCancel}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
         >
           <X className="w-6 h-6" />
@@ -158,17 +167,42 @@ const LeagueModal = ({ isOpen, onClose, onLeagueAdded }) => {
 
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Players
+              Select Players (Multiple)
             </label>
+            
+            {/* Selected players tags */}
+            {selectedPlayers.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedPlayers.map((id) => {
+                  const player = availablePlayers.find((p) => p.id === id);
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
+                    >
+                      {player?.name}
+                      <button
+                        type="button"
+                        onClick={() => togglePlayer(id)}
+                        className="hover:bg-green-200 rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full border rounded-xl px-4 py-3 flex justify-between items-center"
+              className="w-full border rounded-xl px-4 py-3 flex justify-between items-center hover:bg-gray-50"
             >
-              <span>
+              <span className="text-gray-600">
                 {selectedPlayers.length === 0
-                  ? "Select players"
-                  : `${selectedPlayers.length} selected`}
+                  ? "Click to select players"
+                  : `${selectedPlayers.length} player(s) selected`}
               </span>
               <ChevronDown
                 className={`transition-transform ${
@@ -178,25 +212,47 @@ const LeagueModal = ({ isOpen, onClose, onLeagueAdded }) => {
             </button>
 
             {isDropdownOpen && (
-              <div className="absolute z-10 bg-white w-full border rounded-xl mt-2 max-h-60 overflow-y-auto">
+              <div className="absolute z-10 bg-white w-full border rounded-xl mt-2 max-h-60 overflow-y-auto shadow-lg">
                 {availablePlayers.length === 0 ? (
                   <p className="text-center text-gray-400 p-3">
                     No players available
                   </p>
                 ) : (
-                  availablePlayers.map((p) => (
-                    <label
-                      key={p.id}
-                      className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedPlayers.includes(p.id)}
-                        onChange={() => togglePlayer(p.id)}
-                      />
-                      <span className="ml-3">{p.name}</span>
-                    </label>
-                  ))
+                  <>
+                    {/* Select All / Deselect All */}
+                    <div className="sticky top-0 bg-gray-50 border-b px-4 py-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedPlayers.length === availablePlayers.length) {
+                            setSelectedPlayers([]);
+                          } else {
+                            setSelectedPlayers(availablePlayers.map((p) => p.id));
+                          }
+                        }}
+                        className="text-sm text-green-600 font-medium hover:text-green-700"
+                      >
+                        {selectedPlayers.length === availablePlayers.length
+                          ? "Deselect All"
+                          : "Select All"}
+                      </button>
+                    </div>
+
+                    {availablePlayers.map((p) => (
+                      <label
+                        key={p.id}
+                        className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayers.includes(p.id)}
+                          onChange={() => togglePlayer(p.id)}
+                          className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                        />
+                        <span className="ml-3 text-gray-700">{p.name}</span>
+                      </label>
+                    ))}
+                  </>
                 )}
               </div>
             )}
@@ -222,4 +278,4 @@ const LeagueModal = ({ isOpen, onClose, onLeagueAdded }) => {
   );
 };
 
-export default LeagueModal;
+export default LeagueModal
