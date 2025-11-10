@@ -177,7 +177,7 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="••••••••"
-                className={`w-full px-3 py-3 pr-10 border rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                className={`w-full px-3 py-3 pr-10 border rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${
                   errors.password
                     ? "border-red-500 focus:ring-red-500"
                     : "border-gray-300 hover:border-gray-400"

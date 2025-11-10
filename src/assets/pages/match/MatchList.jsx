@@ -136,7 +136,7 @@ const MatchList = ({
                       setReschedulingMatch(match.id);
                       setNewDate(getDateForInput(match.scheduledDate));
                     }}
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    className="text-xs text-green-700 hover:text-green-800 underline"
                   >
                     Reschedule
                   </button>
@@ -148,11 +148,11 @@ const MatchList = ({
                   type="date"
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  className="border border-blue-300 px-2 py-1 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                  className="border border-green-300 px-2 py-1 rounded text-sm focus:ring-2 focus:ring-green-700"
                 />
                 <button
                   onClick={() => handleReschedule(match.id)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                  className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800"
                 >
                   ✓
                 </button>

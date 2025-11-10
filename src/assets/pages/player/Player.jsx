@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import SideBar from "../side-bar/SideBar";
 import PlayerModal from "./PlayerModal";
+import PlayerMatchesModal from "./PlayerMatchesModal"; // ✅ Import modal
 
 const Player = () => {
   const { user } = useSelector((state) => state.reducer.auth);
@@ -29,6 +30,8 @@ const Player = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isMatchesModalOpen, setIsMatchesModalOpen] = useState(false); // ✅ State for matches modal
+  const [selectedPlayer, setSelectedPlayer] = useState(null); // ✅ Selected player for viewing matches
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,6 +109,12 @@ const Player = () => {
 
   const handlePlayerUpdate = () => {
     fetchPlayers();
+  };
+
+  // ✅ Function to open matches modal
+  const handleViewMatches = (player) => {
+    setSelectedPlayer(player);
+    setIsMatchesModalOpen(true);
   };
 
   const handleExport = async () => {
@@ -467,7 +476,12 @@ const Player = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-3">
-                              <button className="text-[#667085] hover:text-blue-600 transition">
+                              {/* ✅ View Matches Button */}
+                              <button 
+                                onClick={() => handleViewMatches(player)}
+                                className="text-[#667085] hover:text-blue-600 transition"
+                                title="View Matches"
+                              >
                                 <Eye className="w-5 h-5" />
                               </button>
                               <button className="text-[#667085] hover:text-green-600 transition">
@@ -491,6 +505,13 @@ const Player = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={handlePlayerUpdate}
+      />
+
+      {/* ✅ Player Matches Modal */}
+      <PlayerMatchesModal
+        isOpen={isMatchesModalOpen}
+        onClose={() => setIsMatchesModalOpen(false)}
+        player={selectedPlayer}
       />
 
       {/* Import Modal */}
